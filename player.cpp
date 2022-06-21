@@ -6,7 +6,7 @@
 #include "random"
 #include "queue"
 
-#define TIME_LIMIT 0.2;
+#define TIME_LIMIT 0.15;
 #define SELF 1
 #define ENEMY 0
 
@@ -248,6 +248,7 @@ int main(){
     maxDepth = 2002 - (rounds*2);
     if(identity == 'B') maxDepth --;
     Scanner scanner(boardState);
+    scanner.findEnemy();
     if(scanner.canReachEnemy && scanner.enemyDistance < 7){
         MiniMax* miniMax = new MiniMax(boardState);
         int depth = 0;

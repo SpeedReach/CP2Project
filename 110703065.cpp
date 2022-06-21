@@ -14,7 +14,7 @@ using namespace std;
 
 char identity,enemyIdentity;
 int rounds,wide,height;
-int maxDepth; // 2002 - rounds
+int maxDepth;
 
 class Clock{
 public:
@@ -50,15 +50,12 @@ public:
     pair<int,int> locations[2];
     int scores[2];
     int freezes[2];
-    int whoMoved = 0; // who caused this state? 0=enemy 1=me
+    int whoMoved = 0;
     bool validState = true;
     bool hasConsumed = false;
 
     BoardState();
 
-    /*
-     * who  0 = enemy   1 = me
-     */
     BoardState* move(int who,Direction* direction);
     void init();
     void print();
@@ -201,11 +198,47 @@ public:
     bool canReachEnemy;
     double cpMap[4];
     Direction* bestDirection;
+    BoardState* boardState;
 
     Scanner(BoardState* boardState);
+    int findEnemy();
 };
 
-
+int Scanner::findEnemy() {
+    queue<pair<int,int>> queue;
+    int stepMap[wide][height] = {};
+    for(int i=0;i<wide;i++){
+        for(int j=0;j<height;j++){
+            stepMap[i][j] = -1;
+        }
+    }
+    pair<int,int> startLoc = boardState->locations[SELF];
+    stepMap[startLoc.first][startLoc.second] = 0;
+    queue.push(make_pair(startLoc.first,startLoc.second));
+    while (!queue.empty()){
+        pair<int,int> loc = queue.front();
+        queue.pop();
+        int step = stepMap[loc.first][loc.second];
+        for(int i=0;i<4;i++){
+            Direction* direction = directions[i];
+            int x = loc.first+direction->deltaX;
+            int y = loc.second+direction->deltaY;
+            if(!isInBound(x,y)) continue;
+            if(stepMap[x][y] != -1) continue;
+            char c = boardState->board[x][y];
+            if(c == enemyIdentity){
+                canReachEnemy = true;
+                enemyDistance = step+1;
+                return enemyDistance;
+            }
+            if(isPassAble(c)){
+                stepMap[x][y] = step+1;
+                queue.push(make_pair(x,y));
+            }
+        }
+    }
+    return 1000;
+}
 
 int main(){
     Clock clock = Clock();
@@ -214,10 +247,9 @@ int main(){
     boardState->init();
     maxDepth = 2002 - (rounds*2);
     if(identity == 'B') maxDepth --;
-    //boardState->print();
     Scanner scanner(boardState);
+    scanner.findEnemy();
     if(scanner.canReachEnemy && scanner.enemyDistance < 7){
-        // Do MiniMax
         MiniMax* miniMax = new MiniMax(boardState);
         int depth = 0;
         while (!clock.timesUp() && depth < maxDepth){
@@ -253,7 +285,6 @@ int main(){
         cout << bestDirection->serialize << endl;
     }
     else{
-        // cout random way
         vector<Direction*> avalibleWay;
         for(int i=0;i<4;i++){
             Direction* item = directions[i];
@@ -284,7 +315,8 @@ MiniMax::Node::Node(Node *parent, BoardState *boardState,Direction* lastDirectio
 
 
 Scanner::Scanner(BoardState* boardState) {
-    enemyDistance = 100;
+    enemyDistance = 1000;
+    this->boardState = boardState;
     canReachTreasure = false;
     canReachEnemy = false;
     memset(cpMap,0,sizeof (cpMap));
@@ -297,14 +329,8 @@ Scanner::Scanner(BoardState* boardState) {
         int nX = startX + directions[i]->deltaX;
         int nY = startY + directions[i]->deltaY;
 
-        //Handling 1st step  dirty code fix later
         if(!isInBound(nX,nY)) continue;
         char c = boardState->board[nX][nY];
-        if(c == enemyIdentity){
-            canReachEnemy = true;
-            enemyDistance = 1;
-            continue;
-        }
         if(!isPassAble(boardState->board[nX][nY])) continue;
         if(c != 'm' && c != 's' && c!= '.' && c != 'b') continue;
         if(c == 'm'){
@@ -313,7 +339,7 @@ Scanner::Scanner(BoardState* boardState) {
         else if(c == 's') cpMap[i] += boardState->scores[SELF];
 
         int steps[wide][height] = {};
-        queue<pair<int,int> > queue;
+        queue<pair<int,int>> queue;
         steps[startX][startY] = -100;
 
         steps[nX][nY] = 1;
@@ -329,10 +355,6 @@ Scanner::Scanner(BoardState* boardState) {
                 if(!isInBound(x,y)) continue;
                 char c = boardState->board[x][y];
                 steps[x][y] = step;
-                if(c == enemyIdentity){
-                    canReachEnemy = true;
-                    if(enemyDistance > step) enemyDistance = step;
-                }
                 if(c != 'm' && c != 's' && c!= '.' && c != 'b') continue;
                 queue.push(make_pair(x,y));
                 if(c == 'm'){
@@ -455,8 +477,6 @@ string MiniMax::getResult(int depth) {
 
         for (int i=0;i<results->at(depth)->size();++i){
             Node* parentNode = results->at(depth)->at(i);
-            // if the mover who caused this state is enemy(1) ,
-            // then the decision should be of this step should be me (0)
             bool findMax = !(parentNode->boardState->whoMoved);
             int* tmp = findMax ? new int(INT_MIN) : new int(INT_MAX);
             for (int j=0;j<parentNode->children.size();++j){
@@ -540,7 +560,6 @@ BoardState *BoardState::move(int who,Direction* direction) {
     if(isNewBoardValid){
         BoardState* newState = new BoardState();
         newState->whoMoved = who;
-        //Cloning board
         for(int i=0;i<wide;i++){
             for(int j=0;j<height;j++){
                 newState->board[i][j] = this->board[i][j];
@@ -561,27 +580,10 @@ BoardState *BoardState::move(int who,Direction* direction) {
 
 
 void MiniMax::print() {
-    /*
-    int i=0;
-    cout<<*(root->benefit) << endl;
-    for (const auto &v : results){
-        for (const auto &item : v){
-            for (const auto &item : item->children){
-                if(item->benefit != nullptr){
-                    cout << *(item->benefit) << " ";
-                }
-                else cout << item->boardState->calculateBenefit(i) << " ";
-            }
-            cout<< " . ";
-        }
-        cout << endl;
-        i++;
-    }
-     */
+
 }
 
 bool testLocation(char** board,pair<int,int> location,int depth){
-    //if(whichRound >= 1999 ) return true;
     if(depth == maxDepth) return true;
     int goodLocation = false;
     for(int i=0;i<4;i++){
