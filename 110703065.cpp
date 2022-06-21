@@ -6,7 +6,7 @@
 #include "random"
 #include "queue"
 
-#define TIME_LIMIT 0.2;
+#define TIME_LIMIT 0.15;
 #define SELF 1
 #define ENEMY 0
 
@@ -227,7 +227,6 @@ int main(){
         }
         string result = miniMax->getResult(depth-1);
         cout << result << endl;
-        
         return 0;
     }
 
@@ -315,7 +314,7 @@ Scanner::Scanner(BoardState* boardState) {
         else if(c == 's') cpMap[i] += boardState->scores[SELF];
 
         int steps[wide][height] = {};
-        queue<pair<int,int>> queue;
+        queue<pair<int,int> > queue;
         steps[startX][startY] = -100;
 
         steps[nX][nY] = 1;
