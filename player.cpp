@@ -198,11 +198,47 @@ public:
     bool canReachEnemy;
     double cpMap[4];
     Direction* bestDirection;
+    BoardState* boardState;
 
     Scanner(BoardState* boardState);
+    int findEnemy();
 };
 
-
+int Scanner::findEnemy() {
+    queue<pair<int,int>> queue;
+    int stepMap[wide][height] = {};
+    for(int i=0;i<wide;i++){
+        for(int j=0;j<height;j++){
+            stepMap[i][j] = -1;
+        }
+    }
+    pair<int,int> startLoc = boardState->locations[SELF];
+    stepMap[startLoc.first][startLoc.second] = 0;
+    queue.push(make_pair(startLoc.first,startLoc.second));
+    while (!queue.empty()){
+        pair<int,int> loc = queue.front();
+        queue.pop();
+        int step = stepMap[loc.first][loc.second];
+        for(int i=0;i<4;i++){
+            Direction* direction = directions[i];
+            int x = loc.first+direction->deltaX;
+            int y = loc.second+direction->deltaY;
+            if(!isInBound(x,y)) continue;
+            if(stepMap[x][y] != -1) continue;
+            char c = boardState->board[x][y];
+            if(c == enemyIdentity){
+                canReachEnemy = true;
+                enemyDistance = step+1;
+                return enemyDistance;
+            }
+            if(isPassAble(c)){
+                stepMap[x][y] = step+1;
+                queue.push(make_pair(x,y));
+            }
+        }
+    }
+    return 1000;
+}
 
 int main(){
     Clock clock = Clock();
@@ -212,7 +248,6 @@ int main(){
     maxDepth = 2002 - (rounds*2);
     if(identity == 'B') maxDepth --;
     Scanner scanner(boardState);
-
     if(scanner.canReachEnemy && scanner.enemyDistance < 7){
         MiniMax* miniMax = new MiniMax(boardState);
         int depth = 0;
@@ -222,7 +257,6 @@ int main(){
         }
         string result = miniMax->getResult(depth-1);
         cout << result << endl;
-
         return 0;
     }
 
@@ -280,7 +314,8 @@ MiniMax::Node::Node(Node *parent, BoardState *boardState,Direction* lastDirectio
 
 
 Scanner::Scanner(BoardState* boardState) {
-    enemyDistance = 100;
+    enemyDistance = 1000;
+    this->boardState = boardState;
     canReachTreasure = false;
     canReachEnemy = false;
     memset(cpMap,0,sizeof (cpMap));
@@ -295,11 +330,6 @@ Scanner::Scanner(BoardState* boardState) {
 
         if(!isInBound(nX,nY)) continue;
         char c = boardState->board[nX][nY];
-        if(c == enemyIdentity){
-            canReachEnemy = true;
-            enemyDistance = 1;
-            continue;
-        }
         if(!isPassAble(boardState->board[nX][nY])) continue;
         if(c != 'm' && c != 's' && c!= '.' && c != 'b') continue;
         if(c == 'm'){
@@ -324,10 +354,6 @@ Scanner::Scanner(BoardState* boardState) {
                 if(!isInBound(x,y)) continue;
                 char c = boardState->board[x][y];
                 steps[x][y] = step;
-                if(c == enemyIdentity){
-                    canReachEnemy = true;
-                    if(enemyDistance > step) enemyDistance = step;
-                }
                 if(c != 'm' && c != 's' && c!= '.' && c != 'b') continue;
                 queue.push(make_pair(x,y));
                 if(c == 'm'){
