@@ -6,7 +6,7 @@
 #include "random"
 #include "queue"
 
-#define TIME_LIMIT 0.07;
+#define TIME_LIMIT 0.2;
 #define SELF 1
 #define ENEMY 0
 
@@ -167,11 +167,11 @@ public:
 
     class Node{
     public:
-        int* benefit;
+        int* benefit = nullptr;
         BoardState* boardState;
         Node* parent;
-        Direction* lastDirection;
-        bool shouldKeepSearching;
+        Direction* lastDirection = nullptr;
+        bool shouldKeepSearching = true;
         vector<Node* > children;
         Node(Node* parent,BoardState* boardState,Direction* lastDirection);
         bool isRepeating();
@@ -227,7 +227,7 @@ int main(){
         }
         string result = miniMax->getResult(depth-1);
         cout << result << endl;
-        clock.totalTime();
+        
         return 0;
     }
 
@@ -282,9 +282,6 @@ MiniMax::Node::Node(Node *parent, BoardState *boardState,Direction* lastDirectio
     this->parent = parent;
     this->boardState = boardState;
     this->lastDirection = lastDirection;
-    this->benefit = nullptr;
-    this->lastDirection = nullptr;
-    this->shouldKeepSearching = true;
 }
 
 
@@ -318,7 +315,7 @@ Scanner::Scanner(BoardState* boardState) {
         else if(c == 's') cpMap[i] += boardState->scores[SELF];
 
         int steps[wide][height] = {};
-        queue<pair<int,int> > queue;
+        queue<pair<int,int>> queue;
         steps[startX][startY] = -100;
 
         steps[nX][nY] = 1;
