@@ -3,10 +3,11 @@
 #include "ctime"
 #include "cstring"
 #include "climits"
+#include "time.h"
 #include "random"
 #include "queue"
 
-#define TIME_LIMIT 0.1;
+#define TIME_LIMIT 0.05;
 #define SELF 1
 #define ENEMY 0
 
@@ -51,6 +52,7 @@ public:
     int scores[2];
     int freezes[2];
     int whoMoved = 0;
+    Direction* lastDirection = nullptr;
     bool validState = true;
     bool hasConsumed = false;
 
@@ -95,13 +97,16 @@ public:
 };
 
 Direction* BestRoute::getResult(int depth) {
+
     vector<Node*> nodes = results.at(depth);
     int maxScore = 0;
     Direction* bestDir = nullptr;
     Node* bestNode;
+
     for (int i=0;i<nodes.size();i++){
         int score=nodes.at(i)->boardState->scores[SELF];
-        if(score > maxScore){
+        srand( time(NULL) );
+        if((score == maxScore && rand()%2) || score > maxScore){
             bestDir=nodes.at(i)->startDirection;
             maxScore = score;
             bestNode = nodes.at(i);
@@ -125,9 +130,14 @@ void BestRoute::bfs(int depth){
         vector<Node*> parentNodes = results.at(depth);
         for(int j=0;j<parentNodes.size();j++){
             Node* parentNode = parentNodes.at(j);
+            Direction* parentLastDir = parentNode->boardState->lastDirection;
             for(int i=0;i<4;++i){
                 BoardState* newState = parentNode->boardState->move(SELF,directions[i]);
                 if(newState != nullptr && newState->validState){
+                    if(!newState->hasConsumed && directions[i]->deltaX + parentLastDir->deltaX == 0
+                    && directions[i]->deltaY + parentLastDir->deltaY == 0){
+                       continue;
+                    }
                     nodes.push_back(new Node(newState,parentNode,parentNode->startDirection));
                 }
             }
@@ -242,8 +252,6 @@ int Scanner::findEnemy() {
 
 int main(){
     Clock clock = Clock();
-	ios::sync_with_stdio(false);
-	cin.tie(0);
     cin >> rounds >> wide >> height;
     BoardState* boardState = new BoardState();
     boardState->init();
@@ -251,7 +259,7 @@ int main(){
     if(identity == 'B') maxDepth --;
     Scanner scanner(boardState);
     scanner.findEnemy();
-    if(scanner.canReachEnemy && scanner.enemyDistance < 7){
+    if(scanner.canReachEnemy && scanner.enemyDistance < 10){
         MiniMax* miniMax = new MiniMax(boardState);
         int depth = 0;
         while (!clock.timesUp() && depth < maxDepth){
@@ -260,18 +268,19 @@ int main(){
         }
         string result = miniMax->getResult(depth-1);
         cout << result << endl;
-		return 0;
+        return 0;
     }
 
     BestRoute* bestRoute = new BestRoute(boardState);
     int depth = 0;
     maxDepth = 1001-rounds;
     if(scanner.canReachEnemy){
-        if(scanner.enemyDistance-6 < maxDepth){
-            maxDepth = scanner.enemyDistance-6;
+        int tmp =(int) (round(scanner.enemyDistance/2));
+        if(tmp < maxDepth){
+            maxDepth = tmp;
         }
     }
-    else if(10 < maxDepth) maxDepth = 10 ;
+    else if(10 < maxDepth) maxDepth = 10;
     while (!clock.timesUp() && depth < maxDepth){
         bestRoute->bfs(depth);
         depth++;
@@ -296,6 +305,7 @@ int main(){
                 avalibleWay.push_back(item);
             }
         }
+        srand( time(NULL) );
         cout << avalibleWay.at((rand()%avalibleWay.size()))->serialize << endl;
     }
 }
@@ -476,9 +486,9 @@ void MiniMax::bfs(int depth) {
 
 string MiniMax::getResult(int depth) {
     while (depth >= 0){
-
-        for (int i=0;i<results->at(depth)->size();++i){
-            Node* parentNode = results->at(depth)->at(i);
+        vector<Node*> * parentNodes = results->at(depth);
+        for (int i=0;i<parentNodes->size();++i){
+            Node* parentNode = parentNodes->at(i);
             bool findMax = !(parentNode->boardState->whoMoved);
             int* tmp = findMax ? new int(INT_MIN) : new int(INT_MAX);
             for (int j=0;j<parentNode->children.size();++j){
@@ -503,6 +513,7 @@ string MiniMax::getResult(int depth) {
     for(int i=0;i<root->children.size();i++){
         Node* item = root->children.at(i);
         if(*(item->benefit) == max){
+            srand( time(NULL) );
             if(rand()%2){
                 bestDir = item->lastDirection;
             }
@@ -562,6 +573,7 @@ BoardState *BoardState::move(int who,Direction* direction) {
     if(isNewBoardValid){
         BoardState* newState = new BoardState();
         newState->whoMoved = who;
+        newState->lastDirection = direction;
         for(int i=0;i<wide;i++){
             for(int j=0;j<height;j++){
                 newState->board[i][j] = this->board[i][j];
