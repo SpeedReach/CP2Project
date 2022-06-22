@@ -6,7 +6,7 @@
 #include "random"
 #include "queue"
 
-#define TIME_LIMIT 0.15;
+#define TIME_LIMIT 0.1;
 #define SELF 1
 #define ENEMY 0
 
@@ -205,8 +205,8 @@ public:
 };
 
 int Scanner::findEnemy() {
-    queue<pair<int,int>> queue;
-    int stepMap[wide][height] = {};
+    queue<pair<int,int> > queue;
+    int stepMap[20][20] = {};
     for(int i=0;i<wide;i++){
         for(int j=0;j<height;j++){
             stepMap[i][j] = -1;
@@ -242,6 +242,8 @@ int Scanner::findEnemy() {
 
 int main(){
     Clock clock = Clock();
+	ios::sync_with_stdio(false);
+	cin.tie(0);
     cin >> rounds >> wide >> height;
     BoardState* boardState = new BoardState();
     boardState->init();
@@ -258,7 +260,7 @@ int main(){
         }
         string result = miniMax->getResult(depth-1);
         cout << result << endl;
-        return 0;
+		return 0;
     }
 
     BestRoute* bestRoute = new BestRoute(boardState);
@@ -338,8 +340,8 @@ Scanner::Scanner(BoardState* boardState) {
         }
         else if(c == 's') cpMap[i] += boardState->scores[SELF];
 
-        int steps[wide][height] = {};
-        queue<pair<int,int>> queue;
+        int steps[20][20] = {};
+        queue<pair<int,int> > queue;
         steps[startX][startY] = -100;
 
         steps[nX][nY] = 1;
